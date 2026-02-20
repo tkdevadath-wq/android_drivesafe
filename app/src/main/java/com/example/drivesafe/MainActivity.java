@@ -7,53 +7,91 @@ import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
+
+    private Fragment eyeFragment, speedFragment, historyFragment;
+    private Fragment activeFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Ask permissions + check GPS
-        checkPermissionsAndGps();
+        // Let the app draw edge-to-edge, then apply system bar insets as
+        // padding on the root LinearLayout.  This pushes the header below
+        // the status bar and the bottom nav above the gesture/nav bar.
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        View rootView = findViewById(R.id.rootLayout);
+        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            // Apply system bar insets as padding on the root LinearLayout
+            v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
+
+        Log.d("DriveSafe", "MainActivity onCreate — layout v3 loaded");
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
 
+        checkPermissionsAndGps();
+
         if (savedInstanceState == null) {
-            loadFragment(new EyeTrackingFragment());
+            eyeFragment = new EyeTrackingFragment();
+            speedFragment = new SpeedLimitFragment();
+            historyFragment = new DriveHistoryFragment();
+
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.nav_host_fragment, historyFragment, "history").hide(historyFragment)
+                    .add(R.id.nav_host_fragment, speedFragment, "speed").hide(speedFragment)
+                    .add(R.id.nav_host_fragment, eyeFragment, "eye")
+                    .commit();
+
+            activeFragment = eyeFragment;
         }
 
         bottomNav.setOnItemSelectedListener(item -> {
-            Fragment selected = null;
+            Fragment target = null;
             int id = item.getItemId();
 
             if (id == R.id.nav_eye) {
-                selected = new EyeTrackingFragment();
+                target = eyeFragment;
             } else if (id == R.id.nav_speed) {
-                selected = new SpeedLimitFragment();
-            } else if (id == R.id.nav_map) {
-                selected = new MapFragment();
+                target = speedFragment;
+            } else if (id == R.id.nav_history) {
+                target = historyFragment;
             }
 
-            if (selected != null) {
-                loadFragment(selected);
+            if (target != null && target != activeFragment) {
+                getSupportFragmentManager().beginTransaction()
+                        .hide(activeFragment)
+                        .show(target)
+                        .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+                        .commit();
+                activeFragment = target;
             }
             return true;
         });
     }
 
     private void checkPermissionsAndGps() {
-
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED
                 || ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -98,15 +136,7 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == 101
                 && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
             checkGpsEnabled();
         }
-    }
-
-    private void loadFragment(Fragment fragment) {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.nav_host_fragment, fragment)
-                .commit();
     }
 }

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Speed alert row — inflated programmatically in DriveHistoryFragment -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="#0DFFFFFF"
+    android:padding="14dp"
+    android:gravity="center_vertical"
+    android:layout_marginBottom="8dp">
+
+    <!-- Speed icon -->
+    <TextView
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:text="&#x26A1;"
+        android:textSize="18sp"
+        android:gravity="center"
+        android:textColor="#FF4444" />
+
+    <!-- Detail column -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="10dp">
+
+        <TextView
+            android:id="@+id/alertSpeed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="85 km/h over 80 km/h limit"
+            android:textColor="#FFCCCC"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/alertTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Feb 18, 2026  3:00 PM"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
+
+    <!-- Over-by badge -->
+    <TextView
+        android:id="@+id/alertOverBy"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="+5"
+        android:textColor="#FF4444"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

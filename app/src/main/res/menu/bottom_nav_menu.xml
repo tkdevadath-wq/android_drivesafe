@@ -9,7 +9,7 @@
         android:icon="@android:drawable/ic_menu_compass"
         android:title="Speed Limit" />
     <item
-        android:id="@+id/nav_map"
-        android:icon="@android:drawable/ic_menu_mapmode"
-        android:title="Map" />
+        android:id="@+id/nav_history"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:title="History" />
 </menu>

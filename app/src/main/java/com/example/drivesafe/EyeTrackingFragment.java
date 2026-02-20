@@ -5,12 +5,14 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -39,10 +41,20 @@ public class EyeTrackingFragment extends Fragment {
     private DatabaseHelper dbHelper;
 
     private boolean isMonitoring = false;
-    private int blinkCount = 0;
+    private int blinkCount = 0;           // resets every minute (for blink rate display)
+    private int sessionTotalBlinks = 0;   // cumulative for the whole session
     private boolean eyesWereClosed = false;
     private long minuteStartTime = 0;
     private long eyeClosedStartTime = 0;
+
+    // Session tracking
+    private long sessionId = -1;
+    private long sessionStartTime = 0;
+    private int sessionWarningCount = 0;
+    private int sessionCriticalCount = 0;
+    // Prevent counting the same close event more than once
+    private boolean warningFired = false;
+    private boolean criticalFired = false;
 
     @Nullable
     @Override
@@ -61,7 +73,7 @@ public class EyeTrackingFragment extends Fragment {
 
         cameraExecutor = Executors.newSingleThreadExecutor();
         mediaPlayer = MediaPlayer.create(getContext(), R.raw.alarm);
-        dbHelper = new DatabaseHelper(getContext());
+        dbHelper = DatabaseHelper.getInstance(requireContext());
 
         FaceDetectorOptions options = new FaceDetectorOptions.Builder()
                 .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
@@ -83,6 +95,23 @@ public class EyeTrackingFragment extends Fragment {
 
             isMonitoring = true;
             minuteStartTime = System.currentTimeMillis();
+            sessionStartTime = System.currentTimeMillis();
+            blinkCount = 0;
+            sessionTotalBlinks = 0;
+            sessionWarningCount = 0;
+            sessionCriticalCount = 0;
+            warningFired = false;
+            criticalFired = false;
+            eyeClosedStartTime = 0;
+            eyesWereClosed = false;
+
+            // Open a new drive session in the database
+            sessionId = dbHelper.startSession();
+            Log.d("DriveSafe", "Session started with ID: " + sessionId);
+            Toast.makeText(getContext(),
+                    "Drive session #" + sessionId + " started",
+                    Toast.LENGTH_SHORT).show();
+
             btnAction.setText("STOP MONITORING");
             btnAction.setBackgroundTintList(
                     android.content.res.ColorStateList.valueOf(Color.RED));
@@ -95,6 +124,24 @@ public class EyeTrackingFragment extends Fragment {
 
     private void stopMonitoring() {
         isMonitoring = false;
+
+        // Save the completed session
+        if (sessionId >= 0) {
+            int durationSec = (int) ((System.currentTimeMillis() - sessionStartTime) / 1000);
+            dbHelper.endSession(sessionId, durationSec,
+                    sessionWarningCount, sessionCriticalCount, sessionTotalBlinks);
+            Log.d("DriveSafe", "Session saved — ID: " + sessionId
+                    + ", duration: " + durationSec + "s"
+                    + ", warnings: " + sessionWarningCount
+                    + ", critical: " + sessionCriticalCount
+                    + ", blinks: " + sessionTotalBlinks);
+            Toast.makeText(getContext(),
+                    "Session saved (" + durationSec + "s, "
+                    + sessionWarningCount + " warn, "
+                    + sessionCriticalCount + " crit)",
+                    Toast.LENGTH_LONG).show();
+            sessionId = -1;
+        }
 
         btnAction.setText("START MONITORING");
         btnAction.setBackgroundTintList(
@@ -206,7 +253,11 @@ public class EyeTrackingFragment extends Fragment {
                 if (!mediaPlayer.isPlaying())
                     mediaPlayer.start();
 
-                dbHelper.addLog("FATIGUE", "CRITICAL (10s)");
+                // Count each critical event only once per close episode
+                if (!criticalFired) {
+                    criticalFired = true;
+                    sessionCriticalCount++;
+                }
 
             } else if (closedDuration >= 2000) {
 
@@ -217,13 +268,23 @@ public class EyeTrackingFragment extends Fragment {
 
                 if (!mediaPlayer.isPlaying())
                     mediaPlayer.start();
+
+                // Count each warning event only once per close episode
+                if (!warningFired) {
+                    warningFired = true;
+                    sessionWarningCount++;
+                }
             }
 
         } else {
 
             if (eyesWereClosed) {
                 blinkCount++;
+                sessionTotalBlinks++;
                 eyesWereClosed = false;
+                // Reset episode flags so a new close event is counted fresh
+                warningFired = false;
+                criticalFired = false;
             }
 
             eyeClosedStartTime = 0;
@@ -248,6 +309,14 @@ public class EyeTrackingFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
 
+        // If fragment was destroyed while a session was active, save partial data
+        if (isMonitoring && sessionId >= 0) {
+            int durationSec = (int) ((System.currentTimeMillis() - sessionStartTime) / 1000);
+            dbHelper.endSession(sessionId, durationSec,
+                    sessionWarningCount, sessionCriticalCount, sessionTotalBlinks);
+            sessionId = -1;
+        }
+
         isMonitoring = false;
 
         try {
@@ -255,9 +324,14 @@ public class EyeTrackingFragment extends Fragment {
                     .get().unbindAll();
         } catch (Exception ignored) {}
 
-        cameraExecutor.shutdown();
+        if (cameraExecutor != null)
+            cameraExecutor.shutdown();
 
-        if (mediaPlayer != null)
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) mediaPlayer.stop();
             mediaPlayer.release();
+            mediaPlayer = null;
+        }
+        // Don't close the singleton dbHelper — it's shared
     }
 }

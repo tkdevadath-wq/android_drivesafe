@@ -4,9 +4,7 @@ plugins {
 
 android {
     namespace = "com.example.drivesafe"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.drivesafe"
@@ -46,10 +44,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
-    implementation("org.osmdroid:osmdroid-android:6.1.14")
     implementation("com.google.android.gms:play-services-location:21.0.1")
-    implementation("com.google.android.material:material:1.9.0")
-    // Existing dependencies...
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
