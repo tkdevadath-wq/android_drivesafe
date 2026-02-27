@@ -59,8 +59,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Drop everything and recreate cleanly to add the new columns
-        db.execSQL("DROP TABLE IF EXISTS Logs");
         db.execSQL("DROP TABLE IF EXISTS Sessions");
         db.execSQL("DROP TABLE IF EXISTS SpeedAlerts");
         onCreate(db);
@@ -77,7 +75,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put("START_TIME", currentTimestamp());
         long id = db.insert("Sessions", null, values);
-        Log.d("DriveSafe-DB", "startSession() inserted row ID=" + id);
+        Log.d(Constants.TAG, "startSession() inserted row ID=" + id);
         return id;
     }
 
@@ -100,7 +98,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put("DISTRACTION_COUNT", distractionCount);
         db.update("Sessions", values, "ID = ?", new String[]{String.valueOf(sessionId)});
 
-        Log.d("DriveSafe-DB", "endSession() updated ID=" + sessionId
+        Log.d(Constants.TAG, "endSession() updated ID=" + sessionId
                 + " duration=" + durationSeconds + "s warn=" + warningCount
                 + " crit=" + criticalCount + " blinks=" + blinkCount
                 + " yawns=" + yawnCount + " distract=" + distractionCount);
@@ -118,7 +116,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                             "YAWN_COUNT, DISTRACTION_COUNT " +
                             "FROM Sessions WHERE END_TIME IS NOT NULL ORDER BY ID DESC", null);
 
-            Log.d("DriveSafe-DB", "getAllSessions() query returned " + cursor.getCount() + " rows");
+            Log.d(Constants.TAG, "getAllSessions() query returned " + cursor.getCount() + " rows");
             while (cursor.moveToNext()) {
                 Session s = new Session();
                 s.id = cursor.getLong(0);

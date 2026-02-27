@@ -131,6 +131,96 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="DETECTION"
+            android:textColor="#8E8E93"
+            android:textSize="12sp"
+            android:letterSpacing="0.1"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="8dp"/>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#151724"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            android:layout_marginBottom="24dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sleep Detection Sensitivity"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginBottom="12dp"/>
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/toggleSensitivity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"
+                    android:layout_marginBottom="8dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSensLow"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:text="@string/sensitivity_low"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        app:strokeColor="#33FFFFFF"
+                        app:cornerRadius="12dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSensMed"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:text="@string/sensitivity_medium"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        app:strokeColor="#33FFFFFF"
+                        app:cornerRadius="12dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSensHigh"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:text="@string/sensitivity_high"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        app:strokeColor="#33FFFFFF"
+                        app:cornerRadius="12dp"/>
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <TextView
+                    android:id="@+id/tvSensitivityDesc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sensitivity_medium_desc"
+                    android:textColor="#8E8E93"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="PREFERENCES"
             android:textColor="#8E8E93"
             android:textSize="12sp"
@@ -175,13 +265,30 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Alert Volume"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:fontFamily="sans-serif-medium"/>
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Alert Volume"
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <TextView
+                            android:id="@+id/tvVolumePercent"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="100%"
+                            android:textColor="#007AFF"
+                            android:textSize="14sp"
+                            android:fontFamily="sans-serif-medium"/>
+                    </LinearLayout>
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderVolume"
@@ -194,7 +301,7 @@
                         app:trackColorActive="#007AFF"
                         app:trackColorInactive="#33FFFFFF"
                         app:haloColor="#33007AFF"
-                        android:layout_marginTop="8dp"/>
+                        android:layout_marginTop="4dp"/>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSelectSound"
@@ -207,15 +314,178 @@
                         app:cornerRadius="12dp"
                         android:layout_marginTop="12dp"/>
 
-                    <TextView
-                        android:id="@+id/tvSelectedSound"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Default Ringtone"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="8dp">
+
+                        <TextView
+                            android:id="@+id/tvSelectedSound"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Default Ringtone"
+                            android:textColor="#8E8E93"
+                            android:textSize="12sp"
+                            android:gravity="center_vertical"/>
+
+                        <ImageButton
+                            android:id="@+id/btnPreviewSound"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:src="@android:drawable/ic_media_play"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/preview_sound"
+                            android:scaleType="centerInside"
+                            app:tint="#007AFF"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- ─── SMART DETECTION ─────────────────────────────────────── -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SMART DETECTION"
+            android:textColor="#8E8E93"
+            android:textSize="12sp"
+            android:letterSpacing="0.1"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="8dp"/>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#151724"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            android:layout_marginBottom="32dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchSmartDetection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/smart_detection_title"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:padding="16dp"
+                    app:thumbTint="#FF9500"
+                    app:trackTint="#33FF9500"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/smart_detection_subtitle"
+                    android:textColor="#8E8E93"
+                    android:textSize="11sp"
+                    android:paddingHorizontal="16dp"
+                    android:layout_marginTop="-8dp"
+                    android:layout_marginBottom="8dp"/>
+
+                <LinearLayout
+                    android:id="@+id/smartDetectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="#1AFFFFFF"
+                        android:layout_marginHorizontal="16dp"/>
+
+                    <!-- Min Speed -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchMinSpeed"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/min_speed_title"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp"
+                        app:thumbTint="#FF9500"
+                        app:trackTint="#33FF9500"/>
+
+                    <LinearLayout
+                        android:id="@+id/minSpeedSliderContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="16dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/tvMinSpeedLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Minimum speed: 10 km/h"
+                            android:textColor="#FFFFFF"
+                            android:textSize="13sp"/>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/sliderMinSpeed"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:valueFrom="5.0"
+                            android:valueTo="50.0"
+                            android:stepSize="5.0"
+                            android:value="10.0"
+                            app:thumbColor="#FF9500"
+                            app:trackColorActive="#FF9500"
+                            app:trackColorInactive="#33FFFFFF"
+                            app:haloColor="#33FF9500"/>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/min_speed_summary"
+                            android:textColor="#8E8E93"
+                            android:textSize="11sp"
+                            android:layout_marginBottom="8dp"/>
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="#1AFFFFFF"
+                        android:layout_marginHorizontal="16dp"/>
+
+                    <!-- Largest Face -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchLargestFace"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/largest_face_title"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp"
+                        app:thumbTint="#FF9500"
+                        app:trackTint="#33FF9500"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/largest_face_summary"
                         android:textColor="#8E8E93"
-                        android:textSize="12sp"
-                        android:gravity="center"
-                        android:layout_marginTop="8dp"/>
+                        android:textSize="11sp"
+                        android:paddingHorizontal="16dp"
+                        android:layout_marginTop="-8dp"
+                        android:paddingBottom="16dp"/>
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
