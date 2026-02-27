@@ -5,12 +5,15 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Rect;
 import android.location.Location;
 import android.location.LocationManager;
-import android.graphics.Rect;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -37,9 +40,16 @@ import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.face.Face;
 import com.google.mlkit.vision.face.FaceDetection;
@@ -47,6 +57,7 @@ import com.google.mlkit.vision.face.FaceDetector;
 import com.google.mlkit.vision.face.FaceDetectorOptions;
 import com.google.mlkit.vision.face.FaceLandmark;
 
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -105,6 +116,22 @@ public class EyeTrackingFragment extends Fragment {
     private boolean warningFired = false;
     private boolean criticalFired = false;
     private boolean sosSent = false;
+
+    // ─── Settings-driven Detection Parameters ────────────────────────────
+    private float activeEarThreshold = Constants.EAR_THRESHOLD;
+    private long activeWarningDuration = Constants.WARNING_DURATION_MS;
+
+    // ─── Smart Detection: minimum speed gating ───────────────────────────
+    private boolean smartDetectionEnabled = false;
+    private boolean minSpeedGatingEnabled = false;
+    private float minSpeedKmh = Constants.DEFAULT_MIN_SPEED_KMH;
+    private volatile float currentSpeedKmh = 0f;
+    private FusedLocationProviderClient fusedSpeedClient;
+    private LocationCallback speedCallback;
+    private boolean isSpeedTrackingActive = false;
+
+    // ─── Smart Detection: largest face priority ──────────────────────────
+    private boolean largestFaceOnly = false;
 
     // ─── Permission Launcher (replaces deprecated requestPermissions) ────
     private final ActivityResultLauncher<String[]> permissionLauncher =
@@ -190,6 +217,9 @@ public class EyeTrackingFragment extends Fragment {
         // Collapse fullscreen if still expanded
         if (isPreviewExpanded) collapsePreview();
 
+        // Stop speed tracking
+        stopSpeedTracking();
+
         // Save session if still monitoring
         if (isMonitoring.get() && sessionId >= 0) {
             int durationSec = (int) ((System.currentTimeMillis() - sessionStartTime) / 1000);
@@ -262,6 +292,21 @@ public class EyeTrackingFragment extends Fragment {
             float volume = prefs.getFloat(Constants.KEY_ALARM_VOLUME,
                     Constants.DEFAULT_ALARM_VOLUME) / 100f;
             mediaPlayer.setVolume(volume, volume);
+
+            // Set audio stream to ALARM for reliable loud playback
+            mediaPlayer.setAudioAttributes(
+                    new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build());
+
+            // Also set device alarm stream volume proportionally
+            AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                int maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
+                int targetVol = Math.round(volume * maxVol);
+                am.setStreamVolume(AudioManager.STREAM_ALARM, targetVol, 0);
+            }
         }
     }
 
@@ -276,8 +321,6 @@ public class EyeTrackingFragment extends Fragment {
             mediaPlayer = null;
         }
     }
-
-    // ─── Monitoring Control ──────────────────────────────────────────────
 
     private void startMonitoring() {
         Context ctx = getContext();
@@ -294,6 +337,26 @@ public class EyeTrackingFragment extends Fragment {
             });
             return;
         }
+
+        // ── Load settings-driven parameters ──────────────────────────────
+        SharedPreferences prefs = ctx.getSharedPreferences(
+                Constants.PREFS_NAME, Context.MODE_PRIVATE);
+
+        // Sensitivity
+        String sensitivity = prefs.getString(
+                Constants.KEY_SENSITIVITY, Constants.DEFAULT_SENSITIVITY);
+        activeEarThreshold = Constants.getEarThreshold(sensitivity);
+        activeWarningDuration = Constants.getWarningDuration(sensitivity);
+
+        // Smart Detection
+        smartDetectionEnabled = prefs.getBoolean(
+                Constants.KEY_SMART_DETECTION_ENABLED, false);
+        minSpeedGatingEnabled = smartDetectionEnabled
+                && prefs.getBoolean(Constants.KEY_MIN_SPEED_ENABLED, false);
+        minSpeedKmh = prefs.getFloat(
+                Constants.KEY_MIN_SPEED_KMH, Constants.DEFAULT_MIN_SPEED_KMH);
+        largestFaceOnly = smartDetectionEnabled
+                && prefs.getBoolean(Constants.KEY_LARGEST_FACE_ONLY, false);
 
         // Reset all state
         isMonitoring.set(true);
@@ -349,6 +412,55 @@ public class EyeTrackingFragment extends Fragment {
         }
 
         startCamera();
+
+        // Start GPS speed tracking if minimum-speed gating is enabled
+        if (minSpeedGatingEnabled) {
+            startSpeedTracking();
+        }
+    }
+
+    // ─── Speed Tracking for Smart Detection ─────────────────────────────
+
+    private void startSpeedTracking() {
+        Context ctx = getContext();
+        if (ctx == null) return;
+
+        if (ActivityCompat.checkSelfPermission(ctx,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Speed gating silently disabled if no location permission
+            Log.w(Constants.TAG, "No location permission — speed gating disabled");
+            minSpeedGatingEnabled = false;
+            return;
+        }
+
+        fusedSpeedClient = LocationServices.getFusedLocationProviderClient(
+                requireActivity());
+
+        speedCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(@NonNull LocationResult locationResult) {
+                if (!isAdded() || locationResult.getLastLocation() == null) return;
+                currentSpeedKmh = locationResult.getLastLocation().getSpeed() * 3.6f;
+            }
+        };
+
+        LocationRequest request = new LocationRequest.Builder(
+                Priority.PRIORITY_HIGH_ACCURACY, 1000)
+                .setMinUpdateIntervalMillis(500)
+                .build();
+
+        fusedSpeedClient.requestLocationUpdates(
+                request, speedCallback, Looper.getMainLooper());
+        isSpeedTrackingActive = true;
+    }
+
+    private void stopSpeedTracking() {
+        if (fusedSpeedClient != null && speedCallback != null && isSpeedTrackingActive) {
+            fusedSpeedClient.removeLocationUpdates(speedCallback);
+            isSpeedTrackingActive = false;
+        }
+        currentSpeedKmh = 0f;
     }
 
     // ─── Public PiP Helpers ─────────────────────────────────────────────
@@ -421,6 +533,9 @@ public class EyeTrackingFragment extends Fragment {
 
     void stopMonitoring() {
         isMonitoring.set(false);
+
+        // Stop speed tracking if it was active
+        stopSpeedTracking();
 
         if (sessionId >= 0) {
             int durationSec = (int) ((System.currentTimeMillis() - sessionStartTime) / 1000);
@@ -610,7 +725,13 @@ public class EyeTrackingFragment extends Fragment {
                     }
 
                     if (!faces.isEmpty()) {
-                        Face face = faces.get(0);
+                        // Pick the face to analyze: largest bounding box or first
+                        Face face;
+                        if (largestFaceOnly && faces.size() > 1) {
+                            face = selectLargestFace(faces);
+                        } else {
+                            face = faces.get(0);
+                        }
 
                         Float leftProb = face.getLeftEyeOpenProbability();
                         Float rightProb = face.getRightEyeOpenProbability();
@@ -652,14 +773,47 @@ public class EyeTrackingFragment extends Fragment {
                 .addOnFailureListener(e -> imageProxy.close());
     }
 
+    /**
+     * Picks the face with the largest bounding-box area (closest to camera = driver).
+     */
+    private Face selectLargestFace(List<Face> faces) {
+        Face largest = faces.get(0);
+        int maxArea = largest.getBoundingBox().width() * largest.getBoundingBox().height();
+        for (int i = 1; i < faces.size(); i++) {
+            Face f = faces.get(i);
+            int area = f.getBoundingBox().width() * f.getBoundingBox().height();
+            if (area > maxArea) {
+                maxArea = area;
+                largest = f;
+            }
+        }
+        return largest;
+    }
+
     // ─── Driver State Logic (main thread) ────────────────────────────────
 
     private void updateDriverState(float ear, float headTurnY,
                                    float headTiltX, boolean isYawning) {
+        // Ignore stale frames that arrive after monitoring stopped
+        if (!isMonitoring.get()) return;
         // Guard: views might be null if fragment is being destroyed
         if (statusText == null || statusCircleFrame == null) return;
         Context ctx = getContext();
         if (ctx == null) return;
+
+        // --- Speed Gating: pause detection when vehicle is below minimum speed ---
+        if (minSpeedGatingEnabled && currentSpeedKmh < minSpeedKmh) {
+            statusText.setText(R.string.detection_paused_stationary);
+            statusText.setTextColor(
+                    ContextCompat.getColor(ctx, R.color.text_secondary));
+            statusCircleFrame.setBackgroundResource(R.drawable.circular_neon_border);
+            // Reset eye closure timing so it doesn't accumulate while paused
+            eyeClosedStartTime = 0;
+            if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                mediaPlayer.pause();
+            }
+            return;
+        }
 
         long currentTime = System.currentTimeMillis();
 
@@ -707,7 +861,7 @@ public class EyeTrackingFragment extends Fragment {
         }
 
         // --- Eye Closure Detection ---
-        if (ear < Constants.EAR_THRESHOLD) {
+        if (ear < activeEarThreshold) {
             eyesWereClosed = true;
             if (eyeClosedStartTime == 0) eyeClosedStartTime = currentTime;
             long closedDuration = currentTime - eyeClosedStartTime;
@@ -738,7 +892,7 @@ public class EyeTrackingFragment extends Fragment {
                     sosSent = true;
                 }
 
-            } else if (closedDuration >= Constants.WARNING_DURATION_MS) {
+            } else if (closedDuration >= activeWarningDuration) {
                 // WARNING: WAKE UP
                 statusText.setText(R.string.status_wake_up);
                 statusText.setTextColor(

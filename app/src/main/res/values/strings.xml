@@ -48,4 +48,24 @@
     <string name="settings_saved">Settings Saved!</string>
     <string name="photo_save_failed">Failed to save photo</string>
     <string name="select_alarm_sound">Select Alarm Sound</string>
+
+    <!-- Sensitivity -->
+    <string name="sensitivity_low">LOW</string>
+    <string name="sensitivity_medium">MED</string>
+    <string name="sensitivity_high">HIGH</string>
+    <string name="sensitivity_low_desc">Tolerant — fewer false alarms, requires longer eye closure to trigger</string>
+    <string name="sensitivity_medium_desc">Balanced — recommended for most drivers</string>
+    <string name="sensitivity_high_desc">Aggressive — triggers faster, may cause more false alerts</string>
+
+    <!-- Smart Detection -->
+    <string name="smart_detection_title">Smart Detection (Experimental)</string>
+    <string name="smart_detection_subtitle">Advanced features that modify when detection is active. Disable if detection stops working.</string>
+    <string name="min_speed_title">Only detect when moving</string>
+    <string name="min_speed_summary">Detection pauses when vehicle is below minimum speed</string>
+    <string name="min_speed_format">Minimum speed: %.0f km/h</string>
+    <string name="largest_face_title">Prioritize driver face</string>
+    <string name="largest_face_summary">Uses the largest detected face (closest to camera) to ignore backseat passengers</string>
+    <string name="detection_paused_stationary">PAUSED — Vehicle stationary</string>
+    <string name="volume_format">%d%%</string>
+    <string name="preview_sound">Preview</string>
 </resources>

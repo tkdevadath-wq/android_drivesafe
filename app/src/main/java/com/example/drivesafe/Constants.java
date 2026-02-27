@@ -20,10 +20,24 @@ public final class Constants {
     public static final String KEY_DARK_MODE = "dark_mode";
     public static final String KEY_SPEED_LIMIT = "speed_limit";
 
+    // Sensitivity preference key & values
+    public static final String KEY_SENSITIVITY = "detection_sensitivity";
+    public static final String SENSITIVITY_LOW = "low";
+    public static final String SENSITIVITY_MEDIUM = "medium";
+    public static final String SENSITIVITY_HIGH = "high";
+    public static final String DEFAULT_SENSITIVITY = SENSITIVITY_MEDIUM;
+
+    // Smart Detection preference keys
+    public static final String KEY_SMART_DETECTION_ENABLED = "smart_detection_enabled";
+    public static final String KEY_MIN_SPEED_ENABLED = "min_speed_enabled";
+    public static final String KEY_MIN_SPEED_KMH = "min_speed_kmh";
+    public static final String KEY_LARGEST_FACE_ONLY = "largest_face_only";
+
     // Default values
     public static final String DEFAULT_ALARM_SOUND = "Sound 1";
     public static final float DEFAULT_ALARM_VOLUME = 100f;
     public static final float DEFAULT_SPEED_LIMIT = 80.0f;
+    public static final float DEFAULT_MIN_SPEED_KMH = 10.0f;
 
     // ─── Eye Tracking Thresholds ─────────────────────────────────────────
     /** Eye Aspect Ratio below this value = eyes are closed */
@@ -56,4 +70,32 @@ public final class Constants {
 
     // ─── Logging Tag ─────────────────────────────────────────────────────
     public static final String TAG = "DriveSafe";
+
+    // ─── Sensitivity Helpers ─────────────────────────────────────────────
+
+    /**
+     * Returns the EAR threshold for the given sensitivity preset.
+     * Low = tolerant (0.20), Medium = balanced (0.25), High = aggressive (0.30).
+     */
+    public static float getEarThreshold(String sensitivity) {
+        if (sensitivity == null) return EAR_THRESHOLD;
+        switch (sensitivity) {
+            case SENSITIVITY_LOW:  return 0.20f;
+            case SENSITIVITY_HIGH: return 0.30f;
+            default:               return 0.25f; // MEDIUM
+        }
+    }
+
+    /**
+     * Returns the warning duration (ms) for the given sensitivity preset.
+     * Low = 2s (slower trigger), Medium = 1s, High = 0.5s (faster trigger).
+     */
+    public static long getWarningDuration(String sensitivity) {
+        if (sensitivity == null) return WARNING_DURATION_MS;
+        switch (sensitivity) {
+            case SENSITIVITY_LOW:  return 2000L;
+            case SENSITIVITY_HIGH: return 500L;
+            default:               return 1000L; // MEDIUM
+        }
+    }
 }

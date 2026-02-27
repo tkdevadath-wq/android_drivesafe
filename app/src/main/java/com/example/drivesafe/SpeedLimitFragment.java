@@ -4,6 +4,8 @@ import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Looper;
@@ -184,6 +186,21 @@ public class SpeedLimitFragment extends Fragment {
             float volume = prefs.getFloat(Constants.KEY_ALARM_VOLUME,
                     Constants.DEFAULT_ALARM_VOLUME) / 100f;
             mediaPlayer.setVolume(volume, volume);
+
+            // Set audio stream to ALARM for reliable loud playback
+            mediaPlayer.setAudioAttributes(
+                    new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build());
+
+            // Also set device alarm stream volume proportionally
+            AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                int maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
+                int targetVol = Math.round(volume * maxVol);
+                am.setStreamVolume(AudioManager.STREAM_ALARM, targetVol, 0);
+            }
         }
     }
 
