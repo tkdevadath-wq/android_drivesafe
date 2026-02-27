@@ -5,11 +5,12 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.MotionEvent; // NEW IMPORT
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.AnimationUtils; // NEW IMPORT
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -34,7 +35,6 @@ import java.io.InputStream;
 
 public class SettingsFragment extends Fragment {
 
-    // Variables matching the XML exactly
     private ShapeableImageView ivProfilePhoto;
     private TextInputEditText etUserName;
     private EditText etEmergencyNumber;
@@ -45,9 +45,8 @@ public class SettingsFragment extends Fragment {
     private Button btnSaveSettings;
 
     private SharedPreferences prefs;
-    private String selectedSound = "Sound 1";
+    private String selectedSound = Constants.DEFAULT_ALARM_SOUND;
 
-    // Permanent Image Copy Logic
     private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
@@ -64,11 +63,13 @@ public class SettingsFragment extends Fragment {
                         fos.close();
                         is.close();
 
-                        // Save the permanent internal path
-                        prefs.edit().putString("profile_image_path", file.getAbsolutePath()).apply();
+                        prefs.edit().putString(Constants.KEY_PROFILE_IMAGE_PATH,
+                                file.getAbsolutePath()).apply();
                         ivProfilePhoto.setImageURI(Uri.fromFile(file));
                     } catch (Exception e) {
-                        Toast.makeText(getContext(), "Failed to save photo", Toast.LENGTH_SHORT).show();
+                        Log.e(Constants.TAG, "Failed to copy profile image", e);
+                        Toast.makeText(getContext(), R.string.photo_save_failed,
+                                Toast.LENGTH_SHORT).show();
                     }
                 }
             }
@@ -76,32 +77,36 @@ public class SettingsFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_settings, container, false);
 
-        prefs = requireActivity().getSharedPreferences("DriveSafePrefs", Context.MODE_PRIVATE);
+        prefs = requireActivity().getSharedPreferences(
+                Constants.PREFS_NAME, Context.MODE_PRIVATE);
 
-        // 1. Bind Views perfectly mapped to XML
-        ivProfilePhoto = view.findViewById(R.id.ivProfilePhoto);
-        etUserName = view.findViewById(R.id.etUserName);
+        ivProfilePhoto    = view.findViewById(R.id.ivProfilePhoto);
+        etUserName        = view.findViewById(R.id.etUserName);
         etEmergencyNumber = view.findViewById(R.id.etEmergencyNumber);
-        switchTheme = view.findViewById(R.id.switchTheme);
-        sliderVolume = view.findViewById(R.id.sliderVolume);
-        btnSelectSound = view.findViewById(R.id.btnSelectSound);
-        tvSelectedSound = view.findViewById(R.id.tvSelectedSound);
-        btnSaveSettings = view.findViewById(R.id.btnSaveSettings);
+        switchTheme       = view.findViewById(R.id.switchTheme);
+        sliderVolume      = view.findViewById(R.id.sliderVolume);
+        btnSelectSound    = view.findViewById(R.id.btnSelectSound);
+        tvSelectedSound   = view.findViewById(R.id.tvSelectedSound);
+        btnSaveSettings   = view.findViewById(R.id.btnSaveSettings);
 
-        // 2. Load Existing Settings
-        etUserName.setText(prefs.getString("profile_name", ""));
-        etEmergencyNumber.setText(prefs.getString("emergency_number", ""));
-        sliderVolume.setValue(prefs.getFloat("alarm_volume", 100f));
-        switchTheme.setChecked(prefs.getBoolean("dark_mode", true));
+        // Load existing settings
+        etUserName.setText(prefs.getString(Constants.KEY_PROFILE_NAME, ""));
+        etEmergencyNumber.setText(prefs.getString(Constants.KEY_EMERGENCY_NUMBER, ""));
+        sliderVolume.setValue(prefs.getFloat(
+                Constants.KEY_ALARM_VOLUME, Constants.DEFAULT_ALARM_VOLUME));
+        switchTheme.setChecked(prefs.getBoolean(Constants.KEY_DARK_MODE, true));
 
-        selectedSound = prefs.getString("alarm_sound", "Sound 1");
+        selectedSound = prefs.getString(
+                Constants.KEY_ALARM_SOUND, Constants.DEFAULT_ALARM_SOUND);
         tvSelectedSound.setText("Selected: " + selectedSound);
 
         // Load profile image
-        String path = prefs.getString("profile_image_path", "");
+        String path = prefs.getString(Constants.KEY_PROFILE_IMAGE_PATH, "");
         if (!path.isEmpty()) {
             File file = new File(path);
             if (file.exists()) {
@@ -109,48 +114,43 @@ public class SettingsFragment extends Fragment {
             }
         }
 
-        // 3. Clicks
         ivProfilePhoto.setOnClickListener(v -> imagePickerLauncher.launch("image/*"));
-
         btnSelectSound.setOnClickListener(v -> showSoundDialog());
 
-        // --- PREMIUM BOUNCE ANIMATION ADDED HERE ---
         btnSaveSettings.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 v.startAnimation(AnimationUtils.loadAnimation(getContext(), R.anim.btn_click));
             }
-            return false; // Returns false so the standard onClick below still executes
+            return false;
         });
 
-        btnSaveSettings.setOnClickListener(v -> {
-            boolean isDarkMode = switchTheme.isChecked();
-
-            SharedPreferences.Editor editor = prefs.edit();
-            if (etUserName.getText() != null) {
-                editor.putString("profile_name", etUserName.getText().toString().trim());
-            }
-            editor.putString("emergency_number", etEmergencyNumber.getText().toString().trim());
-            editor.putFloat("alarm_volume", sliderVolume.getValue());
-            editor.putString("alarm_sound", selectedSound);
-            editor.putBoolean("dark_mode", isDarkMode);
-            editor.apply();
-
-            // Apply Theme
-            if (isDarkMode) {
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-            } else {
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-            }
-
-            Toast.makeText(getContext(), "Settings Saved!", Toast.LENGTH_SHORT).show();
-
-            // Auto-close back to the previous screen
-            if (getParentFragmentManager() != null) {
-                getParentFragmentManager().popBackStack();
-            }
-        });
+        btnSaveSettings.setOnClickListener(v -> saveSettings());
 
         return view;
+    }
+
+    private void saveSettings() {
+        boolean isDarkMode = switchTheme.isChecked();
+
+        SharedPreferences.Editor editor = prefs.edit();
+        if (etUserName.getText() != null) {
+            editor.putString(Constants.KEY_PROFILE_NAME,
+                    etUserName.getText().toString().trim());
+        }
+        editor.putString(Constants.KEY_EMERGENCY_NUMBER,
+                etEmergencyNumber.getText().toString().trim());
+        editor.putFloat(Constants.KEY_ALARM_VOLUME, sliderVolume.getValue());
+        editor.putString(Constants.KEY_ALARM_SOUND, selectedSound);
+        editor.putBoolean(Constants.KEY_DARK_MODE, isDarkMode);
+        editor.apply();
+
+        AppCompatDelegate.setDefaultNightMode(isDarkMode
+                ? AppCompatDelegate.MODE_NIGHT_YES
+                : AppCompatDelegate.MODE_NIGHT_NO);
+
+        Toast.makeText(getContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show();
+
+        getParentFragmentManager().popBackStack();
     }
 
     private void showSoundDialog() {
@@ -160,14 +160,14 @@ public class SettingsFragment extends Fragment {
             if (sounds[i].equals(selectedSound)) checkedItem = i;
         }
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("Select Alarm Sound");
-        builder.setSingleChoiceItems(sounds, checkedItem, (dialog, which) -> {
-            selectedSound = sounds[which];
-            tvSelectedSound.setText("Selected: " + selectedSound);
-            dialog.dismiss();
-        });
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.select_alarm_sound)
+                .setSingleChoiceItems(sounds, checkedItem, (dialog, which) -> {
+                    selectedSound = sounds[which];
+                    tvSelectedSound.setText("Selected: " + selectedSound);
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 }

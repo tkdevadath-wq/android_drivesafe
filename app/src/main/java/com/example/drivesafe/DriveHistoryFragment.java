@@ -1,5 +1,6 @@
 package com.example.drivesafe;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -11,6 +12,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import java.util.List;
@@ -47,15 +49,26 @@ public class DriveHistoryFragment extends Fragment {
 
         dbHelper = DatabaseHelper.getInstance(requireContext());
 
-        clearButton.setOnClickListener(v -> {
-            dbHelper.clearAll();
-            loadData();
-        });
+        clearButton.setOnClickListener(v -> showClearConfirmation());
 
         loadData();
     }
 
-    /** Called by show()/hide() fragment transactions — reload when the tab becomes visible. */
+    /** Show confirmation dialog before clearing all data. */
+    private void showClearConfirmation() {
+        if (getContext() == null) return;
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.clear_all_title)
+                .setMessage(R.string.clear_all_message)
+                .setPositiveButton(R.string.clear, (dialog, which) -> {
+                    dbHelper.clearAll();
+                    loadData();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    /** Reload when the tab becomes visible via show/hide transactions. */
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
@@ -77,7 +90,7 @@ public class DriveHistoryFragment extends Fragment {
         List<DatabaseHelper.Session> sessions = dbHelper.getAllSessions();
         List<DatabaseHelper.SpeedAlert> alerts = dbHelper.getSpeedAlerts();
 
-        Log.d("DriveSafe", "DriveHistoryFragment.loadData() — "
+        Log.d(Constants.TAG, "DriveHistoryFragment.loadData() — "
                 + sessions.size() + " sessions, " + alerts.size() + " speed alerts");
 
         boolean hasSessions = !sessions.isEmpty();
@@ -106,8 +119,6 @@ public class DriveHistoryFragment extends Fragment {
                     .setText(String.valueOf(session.fatigueCriticalCount));
             ((TextView) card.findViewById(R.id.sessionBlinkCount))
                     .setText(String.valueOf(session.blinkCount));
-
-            // --- NEW YAWN & DISTRACTION COUNTS ---
             ((TextView) card.findViewById(R.id.sessionDistractedCount))
                     .setText(String.valueOf(session.distractionCount));
             ((TextView) card.findViewById(R.id.sessionYawnCount))
@@ -144,7 +155,6 @@ public class DriveHistoryFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Don't close the singleton dbHelper — it's shared
         dbHelper = null;
     }
 }

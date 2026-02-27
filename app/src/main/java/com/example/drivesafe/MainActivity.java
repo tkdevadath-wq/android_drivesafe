@@ -69,16 +69,14 @@ public class MainActivity extends AppCompatActivity {
             else activeFragment = eyeFragment;
         }
 
-        // Settings Button Logic - Added Slide Animations here too!
+        // Settings Button
         ImageView btnSettingsTop = findViewById(R.id.btnSettingsTop);
         if (btnSettingsTop != null) {
             btnSettingsTop.setOnClickListener(v -> {
                 if (getSupportFragmentManager().findFragmentByTag("settings") == null) {
                     FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-
-                    // Slide Settings in from the right, slide current screen out to the left
-                    // The last two parameters handle the reverse animation when pressing the "Back" button
-                    ft.setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right);
+                    ft.setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left,
+                            R.anim.slide_in_left, R.anim.slide_out_right);
 
                     if (activeFragment != null) ft.hide(activeFragment);
                     ft.add(R.id.nav_host_fragment, new SettingsFragment(), "settings")
@@ -89,14 +87,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
         bottomNav.setOnItemSelectedListener(item -> {
+            // Use popBackStackImmediate to avoid race condition:
+            // popBackStack() is async, so hide/show below would execute
+            // before the pop completes, causing visual glitches.
             if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
-                getSupportFragmentManager().popBackStack();
+                getSupportFragmentManager().popBackStackImmediate();
             }
 
             Fragment target = null;
             int id = item.getItemId();
-
-            // Assign a target index based on the tab's physical position (0 = Left, 1 = Middle, 2 = Right)
             int targetIndex = 0;
 
             if (id == R.id.nav_eye) {
@@ -111,19 +110,16 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (target != null && target != activeFragment) {
-                // Figure out the index of the currently active fragment
                 int currentIndex = 0;
                 if (activeFragment == speedFragment) currentIndex = 1;
                 else if (activeFragment == historyFragment) currentIndex = 2;
 
                 FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
 
-                // --- PREMIUM UX: SMART DIRECTIONAL SLIDING ---
+                // Directional slide animation
                 if (targetIndex > currentIndex) {
-                    // Moving to a tab on the right (e.g., Eye -> Speed)
                     ft.setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left);
                 } else {
-                    // Moving to a tab on the left (e.g., History -> Speed)
                     ft.setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_right);
                 }
 
@@ -140,13 +136,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionsAndGps() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                || ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
-                || ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions(this,
                     new String[]{
                             Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
                             Manifest.permission.CAMERA,
                             Manifest.permission.SEND_SMS
                     }, 101);
@@ -160,18 +160,23 @@ public class MainActivity extends AppCompatActivity {
         boolean isGpsEnabled = false;
         try {
             if (lm != null) isGpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            Log.e(Constants.TAG, "Error checking GPS status", e);
+        }
 
         if (!isGpsEnabled) {
-            Toast.makeText(this, "Please turn on GPS/Location", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.gps_required, Toast.LENGTH_LONG).show();
             startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
         }
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 101 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == 101 && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             checkGpsEnabled();
         }
     }
