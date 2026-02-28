@@ -1,3 +1,71 @@
 <resources>
     <string name="app_name">DriveSafe</string>
+
+    <!-- Eye Tracking Status -->
+    <string name="status_offline">OFFLINE</string>
+    <string name="status_attentive">ATTENTIVE</string>
+    <string name="status_wake_up">WAKE UP!</string>
+    <string name="status_pull_over">PULL OVER!</string>
+    <string name="status_distracted">DISTRACTED!</string>
+    <string name="status_yawning">YAWNING!</string>
+
+    <!-- Monitoring Buttons -->
+    <string name="start_monitoring">START MONITORING</string>
+    <string name="stop_monitoring">STOP MONITORING</string>
+
+    <!-- Session Messages -->
+    <string name="session_started">Drive session #%1$d started</string>
+    <string name="session_saved">Session saved (%1$ds)</string>
+
+    <!-- Blink Rate -->
+    <string name="blink_rate_format">BLINK: %1$d/min</string>
+
+    <!-- SOS -->
+    <string name="sos_dialog_title">⚠️ EMERGENCY SOS SENT</string>
+    <string name="sos_dialog_message">An emergency alert with your live location has been dispatched to: %1$s</string>
+    <string name="sos_failed_no_number">SOS FAILED: No emergency number saved!</string>
+    <string name="sos_failed">Failed to send SOS</string>
+    <string name="dismiss">DISMISS</string>
+
+    <!-- Speed -->
+    <string name="speed_safe">SAFE</string>
+    <string name="speed_over_limit">⚠ OVER LIMIT!</string>
+    <string name="speed_limit_format">Speed Limit: %.0f km/h</string>
+    <string name="speed_format">%.0f</string>
+
+    <!-- Permissions -->
+    <string name="permissions_required">Camera &amp; SMS permissions are required for monitoring</string>
+    <string name="location_permission_required">Location permission required for speed tracking</string>
+    <string name="gps_required">Please turn on GPS/Location</string>
+
+    <!-- History -->
+    <string name="clear_all_title">Clear All History</string>
+    <string name="clear_all_message">This will permanently delete all drive sessions and speed alerts. This cannot be undone.</string>
+    <string name="clear">CLEAR</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Settings -->
+    <string name="settings_saved">Settings Saved!</string>
+    <string name="photo_save_failed">Failed to save photo</string>
+    <string name="select_alarm_sound">Select Alarm Sound</string>
+
+    <!-- Sensitivity -->
+    <string name="sensitivity_low">LOW</string>
+    <string name="sensitivity_medium">MED</string>
+    <string name="sensitivity_high">HIGH</string>
+    <string name="sensitivity_low_desc">Tolerant — fewer false alarms, requires longer eye closure to trigger</string>
+    <string name="sensitivity_medium_desc">Balanced — recommended for most drivers</string>
+    <string name="sensitivity_high_desc">Aggressive — triggers faster, may cause more false alerts</string>
+
+    <!-- Smart Detection -->
+    <string name="smart_detection_title">Smart Detection (Experimental)</string>
+    <string name="smart_detection_subtitle">Advanced features that modify when detection is active. Disable if detection stops working.</string>
+    <string name="min_speed_title">Only detect when moving</string>
+    <string name="min_speed_summary">Detection pauses when vehicle is below minimum speed</string>
+    <string name="min_speed_format">Minimum speed: %.0f km/h</string>
+    <string name="largest_face_title">Prioritize driver face</string>
+    <string name="largest_face_summary">Uses the largest detected face (closest to camera) to ignore backseat passengers</string>
+    <string name="detection_paused_stationary">PAUSED — Vehicle stationary</string>
+    <string name="volume_format">%d%%</string>
+    <string name="preview_sound">Preview</string>
 </resources>

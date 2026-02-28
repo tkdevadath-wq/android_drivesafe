@@ -3,12 +3,21 @@ package com.example.drivesafe;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
+
 import androidx.appcompat.app.AppCompatActivity;
 
 public class SplashActivity extends AppCompatActivity {
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable navigateRunnable = () -> {
+        startActivity(new Intent(SplashActivity.this, MainActivity.class));
+        finish();
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -18,11 +27,13 @@ public class SplashActivity extends AppCompatActivity {
         Animation anim = AnimationUtils.loadAnimation(this, R.anim.logo_fade_zoom);
         logo.startAnimation(anim);
 
-        // Transition to MainActivity after 3 seconds
-        new Handler().postDelayed(() -> {
-            Intent intent = new Intent(SplashActivity.this, MainActivity.class);
-            startActivity(intent);
-            finish(); // Prevents user from going back to splash
-        }, 3500);
+        handler.postDelayed(navigateRunnable, 3500);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Remove pending callbacks to prevent leaking the Activity
+        handler.removeCallbacks(navigateRunnable);
     }
 }
