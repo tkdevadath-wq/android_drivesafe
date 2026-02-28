@@ -1,55 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0B0D17"> <TextView
-    android:id="@+id/speedStatus"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="32dp"
-    android:fontFamily="sans-serif-medium"
-    android:letterSpacing="0.1"
-    android:text="SAFE"
-    android:textColor="#32D74B" android:textSize="14sp"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent" />
+    android:background="#0B0D17"
+    tools:context=".SpeedLimitFragment">
+
+    <TextView
+        android:id="@+id/speedStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.1"
+        android:text="SAFE"
+        android:textColor="#32D74B"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <FrameLayout
-        android:id="@+id/speedCircleFrame"
-        android:layout_width="240dp" android:layout_height="240dp"
-        android:background="@drawable/circular_neon_border"
+        android:id="@+id/gaugeContainer"
+        android:layout_width="320dp"
+        android:layout_height="320dp"
         app:layout_constraintBottom_toTopOf="@id/sliderContainer"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/speedStatus">
+        app:layout_constraintTop_toBottomOf="@id/speedStatus"
+        app:layout_constraintVertical_bias="0.3">
+
+        <View
+            android:id="@+id/neonBorderLayer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/circular_neon_border" />
+
+        <ImageView
+            android:id="@+id/gaugeBackground"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/gauge_background" />
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:gravity="center"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingBottom="20dp">
 
             <TextView
                 android:id="@+id/speedValue"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-black"
+                android:fontFamily="@font/michroma"
                 android:includeFontPadding="false"
-                android:text="0"
-                android:textColor="#FFFFFF" android:textSize="80sp" />
+                android:text="10"
+                android:textColor="#FFFFFF"
+                android:textSize="40sp"
+                android:textStyle="italic" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="-4dp"
-                android:fontFamily="sans-serif-medium"
+                android:layout_marginTop="-12dp"
+                android:fontFamily="@font/michroma"
                 android:letterSpacing="0.05"
                 android:text="km/h"
                 android:textColor="#8E8E93"
-                android:textSize="16sp" />
+                android:textSize="13sp" />
         </LinearLayout>
     </FrameLayout>
 
@@ -59,7 +82,8 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="24dp"
         android:layout_marginBottom="32dp"
-        app:cardBackgroundColor="#12FFFFFF" app:cardCornerRadius="24dp"
+        app:cardBackgroundColor="#12FFFFFF"
+        app:cardCornerRadius="24dp"
         app:cardElevation="0dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
@@ -74,7 +98,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-bold"
                 android:text="LIMIT: 80 km/h"
-                android:textColor="#FFFFFF"
+                android:textColor="#FF3B30"
                 android:textSize="16sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
@@ -96,13 +120,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:stepSize="5"
                 android:value="80"
-                android:valueFrom="20"
-                android:valueTo="240"
-                app:haloColor="#33007AFF" app:layout_constraintTop_toBottomOf="@id/sliderHint"
-                app:thumbColor="#007AFF" app:trackColorActive="#007AFF"
-                app:trackColorInactive="#33FFFFFF" /> </androidx.constraintlayout.widget.ConstraintLayout>
+                android:valueFrom="0"
+                android:valueTo="280"
+                app:haloColor="#33007AFF"
+                app:layout_constraintTop_toBottomOf="@id/sliderHint"
+                app:thumbColor="#007AFF"
+                app:trackColorActive="#007AFF"
+                app:trackColorInactive="#33FFFFFF" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
