@@ -31,17 +31,11 @@
         app:layout_constraintTop_toBottomOf="@id/speedStatus"
         app:layout_constraintVertical_bias="0.3">
 
-        <View
-            android:id="@+id/neonBorderLayer"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@drawable/circular_neon_border" />
-
         <ImageView
             android:id="@+id/gaugeBackground"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="8dp"
+            android:padding="0dp"
             android:scaleType="fitCenter"
             android:src="@drawable/gauge_background" />
 
@@ -61,7 +55,7 @@
                 android:includeFontPadding="false"
                 android:text="10"
                 android:textColor="#FFFFFF"
-                android:textSize="40sp"
+                android:textSize="50sp"
                 android:textStyle="italic" />
 
             <TextView
