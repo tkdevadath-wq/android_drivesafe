@@ -83,6 +83,7 @@ public class EyeTrackingFragment extends Fragment {
     // ─── Core Components ─────────────────────────────────────────────────
     private FaceDetector faceDetector;
     private MediaPlayer mediaPlayer;
+    private MediaPlayer voicePlayer;
     private ExecutorService cameraExecutor;
     private DatabaseHelper dbHelper;
 
@@ -203,12 +204,10 @@ public class EyeTrackingFragment extends Fragment {
             else stopMonitoring();
         });
 
-        createNotificationChannel(); // Initialize channel for status bar messages
+        createNotificationChannel();
 
         return view;
     }
-
-    // ─── Notification Support ───────────────────────────────────────────
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -317,12 +316,28 @@ public class EyeTrackingFragment extends Fragment {
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build());
-            AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
-            if (am != null) {
-                int maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
-                int targetVol = Math.round(volume * maxVol);
-                am.setStreamVolume(AudioManager.STREAM_ALARM, targetVol, 0);
-            }
+        }
+    }
+
+    private void playVoiceThenAlarm(int voiceResId) {
+        Context ctx = getContext();
+        if (ctx == null || !isMonitoring.get()) return;
+
+        if (voicePlayer != null) {
+            voicePlayer.release();
+            voicePlayer = null;
+        }
+
+        voicePlayer = MediaPlayer.create(ctx, voiceResId);
+        if (voicePlayer != null) {
+            voicePlayer.setOnCompletionListener(mp -> {
+                if (mediaPlayer != null && !mediaPlayer.isPlaying() && isMonitoring.get()) {
+                    mediaPlayer.start();
+                }
+            });
+            voicePlayer.start();
+        } else {
+            if (mediaPlayer != null && !mediaPlayer.isPlaying()) mediaPlayer.start();
         }
     }
 
@@ -331,10 +346,15 @@ public class EyeTrackingFragment extends Fragment {
             try {
                 if (mediaPlayer.isPlaying()) mediaPlayer.stop();
                 mediaPlayer.release();
-            } catch (Exception e) {
-                Log.e(Constants.TAG, "Error releasing MediaPlayer", e);
-            }
+            } catch (Exception e) { Log.e(Constants.TAG, "Error releasing MediaPlayer", e); }
             mediaPlayer = null;
+        }
+        if (voicePlayer != null) {
+            try {
+                if (voicePlayer.isPlaying()) voicePlayer.stop();
+                voicePlayer.release();
+            } catch (Exception e) { Log.e(Constants.TAG, "Error releasing voicePlayer", e); }
+            voicePlayer = null;
         }
     }
 
@@ -506,14 +526,13 @@ public class EyeTrackingFragment extends Fragment {
         }
 
         if (mediaPlayer != null && mediaPlayer.isPlaying()) mediaPlayer.pause();
+        if (voicePlayer != null && voicePlayer.isPlaying()) voicePlayer.pause();
         if (isPreviewExpanded) collapsePreview();
         if (aiCard != null && ctx != null) aiCard.setForeground(ContextCompat.getDrawable(ctx, R.drawable.camera_idle_border));
 
         try {
             if (ctx != null) ProcessCameraProvider.getInstance(ctx).get().unbindAll();
-        } catch (Exception e) {
-            Log.e(Constants.TAG, "Error unbinding camera on stop", e);
-        }
+        } catch (Exception e) { Log.e(Constants.TAG, "Error unbinding camera", e); }
     }
 
     private void expandPreview() {
@@ -615,7 +634,9 @@ public class EyeTrackingFragment extends Fragment {
             statusCircleFrame.setBackgroundResource(R.drawable.circular_neon_border);
             eyeClosedStartTime = 0;
             if (mediaPlayer != null && mediaPlayer.isPlaying()) mediaPlayer.pause();
-            updateStatusNotification("GuardianEye: Paused", "Stationary - detection paused.");
+            if (voicePlayer != null && voicePlayer.isPlaying()) voicePlayer.pause();
+            updateStatusNotification("GuardianEye:Paused", "Stationary" +
+                    "-detection paused.");
             return;
         }
 
@@ -627,15 +648,22 @@ public class EyeTrackingFragment extends Fragment {
                 statusText.setText(R.string.status_distracted);
                 statusText.setTextColor(ContextCompat.getColor(ctx, R.color.status_warning));
                 statusCircleFrame.setBackgroundResource(R.drawable.circular_neon_yellow);
-                if (!distractionFired) { sessionTotalDistractions++; distractionFired = true; }
-                if (mediaPlayer != null && !mediaPlayer.isPlaying()) mediaPlayer.start();
+                if (!distractionFired) {
+                    sessionTotalDistractions++;
+                    distractionFired = true;
+                    playVoiceThenAlarm(R.raw.voice_focus);
+                }
                 updateStatusNotification("GuardianEye: ALERT", "Eyes off the road!");
                 return;
             }
         } else { isDistracted = false; distractionFired = false; }
 
         if (isYawning) {
-            if (!yawnFired) { sessionTotalYawns++; yawnFired = true; }
+            if (!yawnFired) {
+                sessionTotalYawns++;
+                yawnFired = true;
+                playVoiceThenAlarm(R.raw.voice_yawn);
+            }
             statusText.setText(R.string.status_yawning);
             statusText.setTextColor(ContextCompat.getColor(ctx, R.color.status_warning));
             statusCircleFrame.setBackgroundResource(R.drawable.circular_neon_yellow);
@@ -652,16 +680,20 @@ public class EyeTrackingFragment extends Fragment {
                 statusText.setTextColor(ContextCompat.getColor(ctx, R.color.status_danger));
                 statusCircleFrame.setBackgroundResource(R.drawable.circular_neon_red);
                 if (emergencyOverlay != null && emergencyOverlay.getVisibility() == View.GONE) { emergencyOverlay.setVisibility(View.VISIBLE); emergencyOverlay.startAnimation(flashAnim); }
-                if (mediaPlayer != null && !mediaPlayer.isPlaying()) mediaPlayer.start();
-                if (!criticalFired) { criticalFired = true; sessionCriticalCount++; }
+                if (!criticalFired) {
+                    criticalFired = true; sessionCriticalCount++;
+                    playVoiceThenAlarm(R.raw.voice_sos);
+                }
                 if (!sosSent) { sendEmergencySOS(); sosSent = true; }
                 updateStatusNotification("GuardianEye: CRITICAL", "Driver unresponsive! Pull over!");
             } else if (closedDuration >= activeWarningDuration) {
                 statusText.setText(R.string.status_wake_up);
                 statusText.setTextColor(ContextCompat.getColor(ctx, R.color.status_warning));
                 statusCircleFrame.setBackgroundResource(R.drawable.circular_neon_yellow);
-                if (mediaPlayer != null && !mediaPlayer.isPlaying()) mediaPlayer.start();
-                if (!warningFired) { warningFired = true; sessionWarningCount++; }
+                if (!warningFired) {
+                    warningFired = true; sessionWarningCount++;
+                    playVoiceThenAlarm(R.raw.voice_break);
+                }
                 updateStatusNotification("GuardianEye: WARNING", "Drowsiness detected! Wake up!");
             }
         } else {
@@ -672,6 +704,7 @@ public class EyeTrackingFragment extends Fragment {
             statusCircleFrame.setBackgroundResource(R.drawable.circular_neon_border);
             if (emergencyOverlay != null && emergencyOverlay.getVisibility() == View.VISIBLE) { emergencyOverlay.clearAnimation(); emergencyOverlay.setVisibility(View.GONE); }
             if (mediaPlayer != null && mediaPlayer.isPlaying()) mediaPlayer.pause();
+            if (voicePlayer != null && voicePlayer.isPlaying()) voicePlayer.pause();
             updateStatusNotification("GuardianEye: Running", "Monitoring eye alertness...");
         }
 

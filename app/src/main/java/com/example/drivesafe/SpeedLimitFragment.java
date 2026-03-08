@@ -44,6 +44,7 @@ public class SpeedLimitFragment extends Fragment {
     private FusedLocationProviderClient fusedClient;
     private LocationCallback locationCallback;
     private MediaPlayer mediaPlayer;
+    private MediaPlayer voicePlayer;
     private DatabaseHelper dbHelper;
 
     private float userSpeedLimit = Constants.DEFAULT_SPEED_LIMIT;
@@ -72,7 +73,7 @@ public class SpeedLimitFragment extends Fragment {
 
         dbHelper = DatabaseHelper.getInstance(requireContext());
         setupMediaPlayer();
-        createNotificationChannel(); // Initialize notification tray support
+        createNotificationChannel();
 
         fusedClient = LocationServices.getFusedLocationProviderClient(requireActivity());
 
@@ -90,7 +91,7 @@ public class SpeedLimitFragment extends Fragment {
 
                 if (!isChecked) {
                     resetToSafeUI();
-                    cancelStatusNotification(); // Hide notification when monitoring is off
+                    cancelStatusNotification();
                 } else {
                     updateStatusNotification("GuardianEye: Active", "Monitoring speed limit...");
                 }
@@ -120,7 +121,6 @@ public class SpeedLimitFragment extends Fragment {
 
                 if (isAlertEnabled) {
                     updateSpeedUI(speedKmh);
-                    // UPDATE NOTIFICATION WITH LIVE DATA
                     String msg = (speedKmh > userSpeedLimit) ? "SLOW DOWN!" : "Speed is safe";
                     updateStatusNotification("GuardianEye: Active",
                             String.format("%.1f km/h | %s", speedKmh, msg));
@@ -168,7 +168,7 @@ public class SpeedLimitFragment extends Fragment {
         if (nm != null) nm.cancel(Constants.NOTIFICATION_ID);
     }
 
-    // ─── Existing Logic ──────────────────────────────────────────────────
+    // ─── Speed Alert Logic ──────────────────────────────────────────────────
 
     private void updateSpeedLimitLabel() {
         if (speedLimitLabel != null) {
@@ -187,10 +187,7 @@ public class SpeedLimitFragment extends Fragment {
 
         if (isOverLimit) {
             isOverLimit = false;
-            if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                mediaPlayer.pause();
-                mediaPlayer.seekTo(0);
-            }
+            stopAllAudio();
         }
     }
 
@@ -208,10 +205,7 @@ public class SpeedLimitFragment extends Fragment {
 
             if (!isOverLimit) {
                 isOverLimit = true;
-                if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
-                    mediaPlayer.setLooping(true);
-                    mediaPlayer.start();
-                }
+                playVoiceThenAlarm(R.raw.voice_speed);
             }
 
             long now = System.currentTimeMillis();
@@ -223,6 +217,8 @@ public class SpeedLimitFragment extends Fragment {
             resetToSafeUI();
         }
     }
+
+    // ─── Audio Management ────────────────────────────────────────────────
 
     private void setupMediaPlayer() {
         releaseMediaPlayer();
@@ -240,15 +236,38 @@ public class SpeedLimitFragment extends Fragment {
         }
         mediaPlayer = MediaPlayer.create(ctx, soundResId);
         if (mediaPlayer != null) {
+            mediaPlayer.setLooping(true);
             float volume = prefs.getFloat(Constants.KEY_ALARM_VOLUME, Constants.DEFAULT_ALARM_VOLUME) / 100f;
             mediaPlayer.setVolume(volume, volume);
             mediaPlayer.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
-            AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
-            if (am != null) {
-                int maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
-                int targetVol = Math.round(volume * maxVol);
-                am.setStreamVolume(AudioManager.STREAM_ALARM, targetVol, 0);
-            }
+        }
+    }
+
+    private void playVoiceThenAlarm(int voiceResId) {
+        Context ctx = getContext();
+        if (ctx == null || !isAdded()) return;
+
+        if (voicePlayer != null && voicePlayer.isPlaying()) return;
+
+        releaseVoicePlayer();
+        voicePlayer = MediaPlayer.create(ctx, voiceResId);
+        if (voicePlayer != null) {
+            voicePlayer.setOnCompletionListener(mp -> {
+                if (isOverLimit && mediaPlayer != null && !mediaPlayer.isPlaying()) {
+                    mediaPlayer.start();
+                }
+            });
+            voicePlayer.start();
+        } else {
+            if (mediaPlayer != null && !mediaPlayer.isPlaying()) mediaPlayer.start();
+        }
+    }
+
+    private void stopAllAudio() {
+        if (voicePlayer != null && voicePlayer.isPlaying()) voicePlayer.pause();
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+            mediaPlayer.seekTo(0);
         }
     }
 
@@ -259,6 +278,16 @@ public class SpeedLimitFragment extends Fragment {
             mediaPlayer = null;
         }
     }
+
+    private void releaseVoicePlayer() {
+        if (voicePlayer != null) {
+            try { if (voicePlayer.isPlaying()) voicePlayer.stop(); voicePlayer.release(); }
+            catch (Exception e) { Log.e("SpeedLimitFragment", "Error releasing VoicePlayer", e); }
+            voicePlayer = null;
+        }
+    }
+
+    // ─── Lifecycle & Tracking ──────────────────────────────────────────
 
     private void startSpeedTracking() {
         if (getContext() == null) return;
@@ -276,17 +305,8 @@ public class SpeedLimitFragment extends Fragment {
             fusedClient.removeLocationUpdates(locationCallback);
             isTrackingActive = false;
         }
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
-            mediaPlayer.seekTo(0);
-        }
+        stopAllAudio();
         isOverLimit = false;
-    }
-
-    private void resumeSpeedTracking() {
-        if (!isTrackingActive && fusedClient != null && locationCallback != null) {
-            startSpeedTracking();
-        }
     }
 
     @Override
@@ -305,6 +325,7 @@ public class SpeedLimitFragment extends Fragment {
         super.onDestroyView();
         pauseSpeedTracking();
         releaseMediaPlayer();
-        cancelStatusNotification(); // Clean up notification tray on destroy
+        releaseVoicePlayer();
+        cancelStatusNotification();
     }
 }
